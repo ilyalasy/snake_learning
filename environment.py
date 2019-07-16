@@ -1,16 +1,19 @@
 from tensorforce.environments import Environment
-from template_vision import Vision
+from frame_vision import Vision
 from mover import Mover
 from enums import Action
+from ocr import OCR
 import time
+import random
 
 class SnakeEnvironment(Environment):
     def __init__(self):
         self._started = False
         self._vision = Vision()
+        self._ocr = OCR()
         self.mover = Mover()
-        self._states = {'type': 'float','shape': 6}
-        self._actions = {'type': 'int', 'shape': 1, 'num_actions':3}     
+        self._states = {'type': 'float','shape': (64,64,4)}
+        self._actions = {'type': 'int', 'shape': 1, 'num_actions':4}     
 
     @property
     def states(self):
@@ -22,49 +25,56 @@ class SnakeEnvironment(Environment):
         
     def reset(self):
         if not self._started:
-            self.mover.click_worm()
+            self.mover.start_game()
             time.sleep(2)
-            self._vision.look()
             self._started = True
         return self._get_state()
 
     def _get_state(self):
-        return [float(self._vision.is_clear(Action.FORWARD)), float(self._vision.is_clear(Action.LEFT)), float(self._vision.is_clear(Action.RIGHT)),
-                float(self._vision.is_apple(Action.FORWARD)), float(self._vision.is_apple(Action.LEFT)), float(self._vision.is_apple(Action.RIGHT))]
+        return self._vision.get_frames(is_new_episode=True)
 
     def close(self):
         pass
     
     def __str__(self):
-        return "Snake Environment v.1.0.0"
+        return "Snake Environment v.2.0.0"
+
+    def _is_terminal(self):
+        image = self._vision.screenshot(grayscale=False,resize=False, normalize=False)
+        text = self._ocr.get_text(image).lower()
+        # VERY BAD!!!
+        if text:
+            print("####### OCR VALUE ##########")
+            print(text)
+        return ("game ouer" in text) or ("best score" in text)
+
 
     def execute(self, action):   
         action = Action(action[0])
-        terminal = not self._vision.is_clear(action)
 
-        direction = self._vision.get_new_direction(action)
-        self.mover.move(direction)
-        (old_center, _, _) = self._vision.head_pos
-        (apple_center,_,_) = self._vision.apple_pos        
-        self._vision.look(action)
-        (new_center, _,_) = self._vision.head_pos
+        old_frame = self._vision.screenshot()
+        self.mover.move(action)
+        new_frame = self._vision.screenshot()
 
-        state = self._get_state()
-        reward = self._get_reward(old_center, new_center, apple_center)
+        state = self._vision.get_frames(is_new_episode=False)
+        terminal = self._is_terminal()
+        reward = self._get_reward(old_frame, new_frame)
+
         return state, terminal, reward
+ 
 
+    def _get_reward(self, old_frame, new_frame):
+        black = np.array([])
+        threshold = 1
+        for x in range(old_frame.shape[0]):
+            for y in range(old_frame.shape[1])
+                pixel = old_frame[x, y]
+                if pixel == 255:
+                    distance = np.linalg.norm((x,y) - np.mean(black))
+                    if distance < threshold:
+                        np.append(black, pixel)
 
-    def _get_reward(self, old_center, new_center, apple_center):
-        old_diff = {key: apple_center[key] - old_center.get(key, 0) for key in apple_center.keys()}
-        new_diff = {key: apple_center[key] - new_center.get(key, 0) for key in apple_center.keys()}
-
-        if new_diff.values() == [0, 0]:
-            return 2.0
-        if new_diff['x'] > old_diff['x'] or new_diff['y'] > old_diff['y']:
-            return -1.5
-        if new_diff['x'] < old_diff['x'] or new_diff['y'] < old_diff['y']:
-            return 1.5
-
+       
     
 
 

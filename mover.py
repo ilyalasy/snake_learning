@@ -1,6 +1,6 @@
 import pyautogui
 
-WORM_BUTTON = (270,360)
+PYTHON_BUTTON = (480,376)
 GAME_FIELD = (300,300)
 
 class Mover:
@@ -14,5 +14,5 @@ class Mover:
     def click_center(self):
         pyautogui.click(x=GAME_FIELD[0], y=GAME_FIELD[1])
     
-    def click_worm(self):
-        pyautogui.click(x=WORM_BUTTON[0], y=WORM_BUTTON[1])
+    def start_game(self):
+        pyautogui.click(x=PYTHON_BUTTON[0], y=PYTHON_BUTTON[1])
