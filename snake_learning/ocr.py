@@ -2,6 +2,7 @@ from imutils.object_detection import non_max_suppression
 import numpy as np
 import pytesseract
 import cv2
+from logger import get_logger
 
 EAST = "./frozen_east_text_detection.pb"
 LAYER_NAMES = [
@@ -73,7 +74,7 @@ class OCR:
         return (rects, confidences)
 
     def __init__(self):
-        print("[INFO] loading EAST text detector...")
+        get_logger().info("loading EAST text detector...")
         self.east_net = cv2.dnn.readNet(EAST)
 
     def _get_boxes(self, image):
@@ -90,8 +91,8 @@ class OCR:
         return non_max_suppression(np.array(rects), probs=confidences)
     
 
-    def get_text(self,image):
-        results = self._get_text_in_boxes(image)
+    def get_text(self,image, single_character=False):
+        results = self._get_text_in_boxes(image,single_character)
         results = sorted(results, key=lambda r:r[0][1])
         final_text = ""
         for ((_, _, _, _), text) in results:
@@ -100,7 +101,7 @@ class OCR:
 
 
 
-    def _get_text_in_boxes(self,image):
+    def _get_text_in_boxes(self,image, single_character):
         orig = image.copy()
         (h, w) = image.shape[:2]        
         rW = w / float(W)
@@ -135,7 +136,9 @@ class OCR:
             
             # oem 1 = LSTM only
             # psm 6 = block of text
-            config = ("-l eng --oem 1 --psm 6")
+            params = "-l eng --oem 1 --psm "
+            params = params + "10" if single_character else params + "6"
+            config = (params)
             text = pytesseract.image_to_string(roi, config=config)
 
             # add the bounding box coordinates and OCR'd text to the list
@@ -143,10 +146,3 @@ class OCR:
             results.append(((startX, startY, endX, endY), text))
             
         return results
-        
-
-
-# ocr = OCR()
-# text = ocr.get_text(cv2.imread("./images/test/0.png"))
-# print(text)
-

@@ -29,8 +29,8 @@ class Vision:
         if resize:
             image = cv2.resize(image, (W, H))
         if normalize:
-            # image = image / 255.0
-            image = cv2.threshold(image, 90, 255, cv2.THRESH_BINARY)[1]
+            image = image / 255.0
+            # image = cv2.threshold(image, 90, 255, cv2.THRESH_BINARY)[1]
         return image
 
     def get_frames(self, is_new_episode):     
@@ -48,15 +48,3 @@ class Vision:
             self.stacked_frames.append(frame)
   
         return np.stack(self.stacked_frames, axis=2)
-        
-        
-    
-
-# vision = Vision()
-# for i in range(100):
-#     try:
-#         vision.look()
-#     except KeyboardInterrupt:
-#         break
-# print("FINISHED!")
-
