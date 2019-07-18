@@ -21,16 +21,19 @@ class SnakeEnvironment(Environment):
                 - left: integer that specifies left position of the game frame
                 - width: integer that specifies width of the game frame
                 - height: integer that specifies height of the game frame
-            game_over_condition (str, list of str, or callable): String or list of strings are treated as words that appears on the screen and indicates the end of the episode.
+            game_over_condition (str, list of str, or callable): String or list of strings are treated as words that appears on the screen and indicates the end of the episode. 
                 Callable is treated as function to be called to check whether game is finished or not based on screenshot of a current state.
                 Should take an image (current screenshot of state) as numpy array and return boolean.
             restart_spec (dict): Dictionary that specifies behavior needed to restart the game with following attributes (required):
                 - action: (str, or tuple of int): Action needed to perform to start new episode after death.
                     String will be treated as key name, tuple of ints will be treated as mouse coordinates of a button to be clicked in format (x,y).
                 - wait_for (str): String whose appearance on the screen is needed to wait before start of the new episode (default = None).
+            preprocess (callable): Function to be called to apply custom preprocess to every screenshot (default=None).
+                Should take an image (numpy array) and return preprocessed image.
+
     """
 
-    def __init__(self, game_field, game_over_condition, restart_spec):
+    def __init__(self, game_field, game_over_condition, restart_spec, preprocess=None):
         
         self.game_over_condition = game_over_condition
         if isinstance(self.game_over_condition, str):
@@ -43,7 +46,7 @@ class SnakeEnvironment(Environment):
         self.logger = get_logger()
         self.start_time = 0.0
         self._started = False
-        self._vision = Vision(game_field)
+        self._vision = Vision(game_field,preprocess)
         self._ocr = OCR()
         self.mover = Mover(restart_spec['action'])
         self._states = STATES
@@ -89,7 +92,7 @@ class SnakeEnvironment(Environment):
         return "Snake Environment v.2.0.0"
 
     def _is_terminal(self):
-        image = self._vision.screenshot(grayscale=False,resize=False, normalize=False)
+        image = self._vision.screenshot(grayscale=False,resize=False, normalize=False, preprocess=False)
         
         if callable(self.game_over_condition):
             return self.game_over_condition(image)
@@ -106,9 +109,9 @@ class SnakeEnvironment(Environment):
     def execute(self, action):   
         action = Action(action[0])
 
-        old_frame = self._vision.screenshot()
+        # old_frame = self._vision.screenshot()
         self.mover.move(action)
-        new_frame = self._vision.screenshot()
+        # new_frame = self._vision.screenshot()
 
         state = self._get_state(False)
         terminal = self._is_terminal()

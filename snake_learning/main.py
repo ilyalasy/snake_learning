@@ -22,10 +22,30 @@ PLAYSNAKE_FIELD = {'top': PLAYSNAKE_T, 'left': PLAYSNAKE_L,
 def is_jssnake_over(image):
     return (image[200,250] == [0,0,0]).all()
 
+import cv2
+def jssnake_preprocess(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    hsv_channels = cv2.split(hsv)
+
+    rows = image.shape[0]
+    cols = image.shape[1]
+
+    for i in range(rows):
+        for j in range(cols):
+            h = hsv_channels[0][i][j]
+
+            if h > 90 and h < 130:
+                hsv_channels[2][i][j] = 255
+            else:
+                hsv_channels[2][i][j] = 0
+    return cv2.merge(hsv_channels)
+    
+
 JSSNAKE_L = 30
 JSSNAKE_T = 105
-JSSNAKE_W = 730
-JSSNAKE_H = 445
+JSSNAKE_W = 740
+JSSNAKE_H = 440
 JSSNAKE_RESTART = {'action': 'enter'}
 JSSNAKE_OVER = is_jssnake_over
 JSSNAKE_FIELD = {'top': JSSNAKE_T, 'left': JSSNAKE_L,
@@ -34,7 +54,7 @@ JSSNAKE_FIELD = {'top': JSSNAKE_T, 'left': JSSNAKE_L,
 
 def get_environment(name):
     if name == 'jssnake':
-        return SnakeEnvironment(JSSNAKE_FIELD, JSSNAKE_OVER, JSSNAKE_RESTART)
+        return SnakeEnvironment(JSSNAKE_FIELD, JSSNAKE_OVER, JSSNAKE_RESTART,preprocess=jssnake_preprocess)
     if name == 'playsnake':
         return SnakeEnvironment(PLAYSNAKE_FIELD, PLAYSNAKE_OVER, PLAYSNAKE_RESTART)
 

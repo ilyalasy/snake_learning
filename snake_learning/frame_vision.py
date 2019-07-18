@@ -10,21 +10,29 @@ H = 64
 
 
 class Vision:
-    def __init__(self, monitor):
+    def __init__(self, monitor, preprocess):
+        self.preprocess = preprocess
         self.monitor = monitor
         self.stacked_frames = deque(
             [np.zeros((W, H), dtype=np.int) for i in range(FRAME_NUMBER)], maxlen=FRAME_NUMBER)
 
-    def screenshot(self, grayscale=True, resize=True, normalize=True):
-        mode = cv2.COLOR_BGRA2GRAY if grayscale else cv2.COLOR_BGRA2BGR
+    def screenshot(self, grayscale=True, resize=True, normalize=True, preprocess=True):
         with mss.mss() as sct:
-            image = cv2.cvtColor(np.array(sct.grab(self.monitor)), mode)
+            image = np.array(sct.grab(self.monitor))
+
         if resize:
             image = cv2.resize(image, (W, H))
+
+        if preprocess and self.preprocess:
+            image = self.preprocess(image)
+
+        mode = cv2.COLOR_BGRA2GRAY if grayscale else cv2.COLOR_BGRA2BGR
+        image = cv2.cvtColor(image, mode)
+        
         if normalize:
             image = image / 255.0
         
-        cv2.imwrite("./lol.png",image)
+        # cv2.imwrite("./lol.png",image)
         return image
 
     def get_frames(self, is_new_episode):
