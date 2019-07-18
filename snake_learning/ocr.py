@@ -6,15 +6,16 @@ from logger import get_logger
 
 EAST = "./frozen_east_text_detection.pb"
 LAYER_NAMES = [
-	"feature_fusion/Conv_7/Sigmoid",
-	"feature_fusion/concat_3"]
+    "feature_fusion/Conv_7/Sigmoid",
+    "feature_fusion/concat_3"]
 
-MIN_CONFIDENCE = 0.5
+MIN_CONFIDENCE = 0
 PADDING = 0.25
 H = 64
 W = 64
-class OCR:
 
+
+class OCR:
     @staticmethod
     def decode_predictions(scores, geometry):
         # grab the number of rows and columns from the scores volume, then
@@ -23,7 +24,7 @@ class OCR:
         (numRows, numCols) = scores.shape[2:4]
         rects = []
         confidences = []
-    
+
         # loop over the number of rows
         for y in range(0, numRows):
             # extract the scores (probabilities), followed by the
@@ -35,41 +36,41 @@ class OCR:
             xData2 = geometry[0, 2, y]
             xData3 = geometry[0, 3, y]
             anglesData = geometry[0, 4, y]
-    
+
             # loop over the number of columns
             for x in range(0, numCols):
                 # if our score does not have sufficient probability,
                 # ignore it
                 if scoresData[x] < MIN_CONFIDENCE:
                     continue
-    
+
                 # compute the offset factor as our resulting feature
                 # maps will be 4x smaller than the input image
                 (offsetX, offsetY) = (x * 4.0, y * 4.0)
-    
+
                 # extract the rotation angle for the prediction and
                 # then compute the sin and cosine
                 angle = anglesData[x]
                 cos = np.cos(angle)
                 sin = np.sin(angle)
-    
+
                 # use the geometry volume to derive the width and height
                 # of the bounding box
                 h = xData0[x] + xData2[x]
                 w = xData1[x] + xData3[x]
-    
+
                 # compute both the starting and ending (x, y)-coordinates
                 # for the text prediction bounding box
                 endX = int(offsetX + (cos * xData1[x]) + (sin * xData2[x]))
                 endY = int(offsetY - (sin * xData1[x]) + (cos * xData2[x]))
                 startX = int(endX - w)
                 startY = int(endY - h)
-    
+
                 # add the bounding box coordinates and probability score
                 # to our respective lists
                 rects.append((startX, startY, endX, endY))
                 confidences.append(scoresData[x])
-    
+
         # return a tuple of the bounding boxes and associated confidences
         return (rects, confidences)
 
@@ -81,29 +82,26 @@ class OCR:
         # construct a blob from the image and then perform a forward pass of
         # the model to obtain the two output layer sets
         blob = cv2.dnn.blobFromImage(image, 1.0, (W, H),
-            (123.68, 116.78, 103.94), swapRB=True, crop=False)
+                                     (123.68, 116.78, 103.94), swapRB=True, crop=False)
         self.east_net.setInput(blob)
         (scores, geometry) = self.east_net.forward(LAYER_NAMES)
-        
+
         # decode the predictions, then  apply non-maxima suppression to
         # suppress weak, overlapping bounding boxes
         (rects, confidences) = OCR.decode_predictions(scores, geometry)
         return non_max_suppression(np.array(rects), probs=confidences)
-    
 
-    def get_text(self,image, single_character=False):
-        results = self._get_text_in_boxes(image,single_character)
-        results = sorted(results, key=lambda r:r[0][1])
+    def get_text(self, image, single_character=False):
+        results = self._get_text_in_boxes(image, single_character)
+        results = sorted(results, key=lambda r: r[0][1])
         final_text = ""
         for ((_, _, _, _), text) in results:
             final_text += "{} ".format(text)
         return final_text
 
-
-
-    def _get_text_in_boxes(self,image, single_character):
+    def _get_text_in_boxes(self, image, single_character):
         orig = image.copy()
-        (h, w) = image.shape[:2]        
+        (h, w) = image.shape[:2]
         rW = w / float(W)
         rH = h / float(H)
         image = cv2.resize(image, (W, H))
@@ -133,7 +131,7 @@ class OCR:
 
             # extract the actual padded ROI
             roi = orig[startY:endY, startX:endX]
-            
+
             # oem 1 = LSTM only
             # psm 6 = block of text
             params = "-l eng --oem 1 --psm "
@@ -144,5 +142,10 @@ class OCR:
             # add the bounding box coordinates and OCR'd text to the list
             # of results
             results.append(((startX, startY, endX, endY), text))
-            
+
         return results
+
+
+# ocr = OCR()
+# img = cv2.imread("./lol.png")
+# ocr.get_text(img)
